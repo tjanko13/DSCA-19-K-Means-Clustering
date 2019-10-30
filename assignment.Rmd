@@ -1,0 +1,35 @@
+---
+title: "Assignment"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library('tidyverse')
+library('caret')
+
+raw_dat = ISLR::Auto %>%
+  as_tibble() 
+
+dat = raw_dat %>%
+  select(acceleration, weight)
+```
+
+```{r}
+raw_dat %>%
+  ggplot(aes(x = weight, y = acceleration)) +
+  geom_point()
+```
+
+
+Complete the following steps:  
+
+  - Preprocess your data by one of the following (your choice): scale, center, standardize, normalize
+  - Decide on an appropriate value of K ... via trial and error
+  - Visualize your results in a plot
+```{r}
+
+```
+
+
+

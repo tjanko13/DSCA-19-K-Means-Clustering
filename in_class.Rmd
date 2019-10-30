@@ -1,0 +1,387 @@
+---
+title: "In Class"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+set.seed(123)
+library('tidyverse')
+library('caret')
+library('gridExtra') #install.packages('gridExtra')
+
+raw_dat = iris %>% 
+  as_tibble() 
+
+dat = raw_dat %>%
+  select(Sepal.Length, Petal.Length)
+```
+
+
+Take a look at the raw data
+```{r}
+raw_dat
+```
+
+
+We are selecting data, this would assume no knowledge of `Species` ... and we're simplifying to 2 variables to help with visualization.
+```{r}
+summary(dat)
+```
+
+
+```{r}
+dat %>%
+  summarize(
+    mean_Sepal.Length = mean(Sepal.Length),
+    sd_Sepal.Length = sd(Sepal.Length),
+    mean_Petal.Length = mean(Petal.Length),
+    sd_Petal.Length = sd(Petal.Length))
+```
+
+
+
+The raw data visualized, we can see that some clusters will show similarity and that setosa is relatively easy to pick out of the crowd.
+```{r}
+p = raw_dat %>%
+  ggplot(aes(x = Sepal.Length, y = Petal.Length, col = Species)) + 
+  geom_point()
+p
+```
+
+
+What are the distributions of the columns?
+```{r}
+d1 = dat %>%
+  ggplot(aes(x = Sepal.Length)) + 
+  geom_density()
+
+d2 = dat %>%
+  ggplot(aes(x = Petal.Length)) + 
+  geom_density()
+
+grid.arrange(d1, d2)
+```
+
+
+
+Building a model is incredibly simple... just hand it the data and the number of clusters you would like to predict.
+```{r}
+result = kmeans(dat, 3)
+result
+```
+
+
+Here is a look at what the predictions were (note that each column is exactly 50 total results and that 1, 2, 3 don't always line up with the actual class names)
+```{r}
+conf_mtx = table(result$cluster, raw_dat$Species)
+conf_mtx
+```
+
+
+Let's see what the results look like visually.
+```{r}
+p2 = dat %>%
+  mutate(cluster = result$cluster) %>%
+  ggplot(aes(x = Sepal.Length, y = Petal.Length, col = as.factor(cluster))) + 
+  geom_point()
+gridExtra::grid.arrange(p, p2)
+```
+
+
+
+What happens when you repeat the process over and over? Let's run the following code block multiple times.
+```{r}
+result = kmeans(dat, 3)
+p2 = dat %>%
+  mutate(cluster = result$cluster) %>%
+  ggplot(aes(x = Sepal.Length, y = Petal.Length, col = as.factor(cluster))) + 
+  geom_point()
+gridExtra::grid.arrange(p, p2)
+```
+
+
+
+
+
+So, do we need to change our data at all? Should we do some pre processing? Why would we do such a thing?
+
+
+
+
+
+
+
+
+Let's talk about pre processing our data. What does it mean to "scale" our data?
+It divides all values by the standard deviation of each column -- what would you expect the standard deviation of the output to be?
+```{r}
+scaled_func = preProcess(dat, method = c("scale"))
+scaled_dat = predict(scaled_func, dat)
+scaled_dat
+```
+
+```{r}
+summary(scaled_dat)
+```
+
+Note that the means have changed from their original values but that the standard deviation is now 1 for both columns.
+```{r}
+scaled_dat %>%
+  summarize(
+    mean_Sepal.Length = mean(Sepal.Length),
+    sd_Sepal.Length = sd(Sepal.Length),
+    mean_Petal.Length = mean(Petal.Length),
+    sd_Petal.Length = sd(Petal.Length))
+```
+
+How have the distributions changed?
+```{r}
+sd1 = scaled_dat %>%
+  ggplot(aes(x = Sepal.Length)) +
+  geom_density()
+
+sd2 = scaled_dat %>%
+  ggplot(aes(x = Petal.Length)) +
+  geom_density()
+
+gridExtra::grid.arrange(sd1, sd2)
+```
+
+```{r}
+result = kmeans(scaled_dat, 3)
+p2 = scaled_dat %>%
+  mutate(cluster = result$cluster) %>%
+  ggplot(aes(x = Sepal.Length, y = Petal.Length, col = as.factor(cluster))) + 
+  geom_point()
+gridExtra::grid.arrange(p, p2)
+```
+
+
+
+
+
+
+What does it mean to "center" data?  
+We are subtracting the mean of each column. What would you expect the mean to be after this type of transformation?
+```{r}
+centered_func = caret::preProcess(dat, method = c("center"))
+centered_dat = predict(centered_func, dat)
+centered_dat
+```
+
+
+```{r}
+summary(centered_dat)
+```
+
+
+```{r}
+centered_dat %>%
+  summarize(
+    mean_Sepal.Length = mean(Sepal.Length),
+    sd_Sepal.Length = sd(Sepal.Length),
+    mean_Petal.Length = mean(Petal.Length),
+    sd_Petal.Length = sd(Petal.Length))
+```
+
+
+```{r}
+centered_dat %>%
+  bind_cols(raw_dat %>% select(Species)) %>%
+  ggplot(aes(x = Sepal.Length, y = Petal.Length, col = Species)) +
+  geom_point()
+```
+
+
+```{r}
+cd1 = centered_dat %>%
+  ggplot(aes(x = Sepal.Length)) +
+  geom_density()
+
+cd2 = centered_dat %>%
+  ggplot(aes(x = Petal.Length)) +
+  geom_density()
+
+gridExtra::grid.arrange(cd1, cd2)
+```
+
+
+
+```{r}
+result = kmeans(centered_dat, 3)
+p2 = centered_dat %>%
+  mutate(cluster = result$cluster) %>%
+  ggplot(aes(x = Sepal.Length, y = Petal.Length, col = as.factor(cluster))) + 
+  geom_point()
+gridExtra::grid.arrange(p, p2)
+```
+
+
+
+
+What does it mean to standardized your data?  
+We simply combine the two methods above. What does this mean for the standard deviation and mean?
+```{r}
+standardized_func = caret::preProcess(dat, method = c("center", "scale"))
+standardized_dat = predict(standardized_func, dat)
+standardized_dat
+```
+
+
+```{r}
+summary(standardized_dat)
+```
+
+
+```{r}
+standardized_dat %>%
+  summarize(
+    mean_Sepal.Length = mean(Sepal.Length),
+    sd_Sepal.Length = sd(Sepal.Length),
+    mean_Petal.Length = mean(Petal.Length),
+    sd_Petal.Length = sd(Petal.Length))
+```
+
+
+```{r}
+standardized_dat %>%
+  bind_cols(raw_dat %>% select(Species)) %>%
+  ggplot(aes(x = Sepal.Length, y = Petal.Length, col = Species)) +
+  geom_point()
+```
+
+
+```{r}
+std1 = standardized_dat %>%
+  ggplot(aes(x = Sepal.Length)) +
+  geom_density()
+
+std2 = standardized_dat %>%
+  ggplot(aes(x = Petal.Length)) +
+  geom_density()
+
+gridExtra::grid.arrange(std1, std2)
+```
+
+
+```{r}
+result = kmeans(standardized_dat, 3)
+p2 = standardized_dat %>%
+  mutate(cluster = result$cluster) %>%
+  ggplot(aes(x = Sepal.Length, y = Petal.Length, col = as.factor(cluster))) + 
+  geom_point()
+gridExtra::grid.arrange(p, p2)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+What does it mean to "normalize" data?
+It means you squish everything between 0 and 1. What does this look like?
+```{r}
+normalized_func = caret::preProcess(dat, method = c("range"))
+normalized_dat = predict(normalized_func, dat)
+normalized_dat
+```
+
+
+```{r}
+summary(normalized_dat)
+```
+
+
+```{r}
+normalized_dat %>%
+  summarize(
+    mean_Sepal.Length = mean(Sepal.Length),
+    sd_Sepal.Length = sd(Sepal.Length),
+    mean_Petal.Length = mean(Petal.Length),
+    sd_Petal.Length = sd(Petal.Length))
+```
+
+
+```{r}
+normalized_dat %>%
+  bind_cols(raw_dat %>% select(Species)) %>%
+  ggplot(aes(x = Sepal.Length, y = Petal.Length, col = Species)) +
+  geom_point()
+```
+
+
+```{r}
+nd1 = normalized_dat %>%
+  ggplot(aes(x = Sepal.Length)) +
+  geom_density()
+
+nd2 = normalized_dat %>%
+  ggplot(aes(x = Petal.Length)) +
+  geom_density()
+
+gridExtra::grid.arrange(nd1, nd2)
+```
+
+
+```{r}
+result = kmeans(normalized_dat, 3)
+p2 = normalized_dat %>%
+  mutate(cluster = result$cluster) %>%
+  ggplot(aes(x = Sepal.Length, y = Petal.Length, col = as.factor(cluster))) + 
+  geom_point()
+gridExtra::grid.arrange(p, p2)
+```
+
+
+
+What happens when you run kmeans over and over for each data set?
+```{r}
+k_val = 5
+
+result_sd = kmeans(scaled_dat, k_val)
+p1 = scaled_dat %>%
+  mutate(cluster = result_sd$cluster) %>%
+  ggplot(aes(x = Sepal.Length, y = Petal.Length, col = as.factor(cluster))) + 
+  geom_point() + 
+  labs(title = 'scaled')
+
+result_cd = kmeans(centered_dat, k_val)
+p2 = centered_dat %>%
+  mutate(cluster = result_cd$cluster) %>%
+  ggplot(aes(x = Sepal.Length, y = Petal.Length, col = as.factor(cluster))) + 
+  geom_point() + 
+  labs(title = 'centered')
+
+result_std = kmeans(standardized_dat, k_val)
+p3 = standardized_dat %>%
+  mutate(cluster = result_std$cluster) %>%
+  ggplot(aes(x = Sepal.Length, y = Petal.Length, col = as.factor(cluster))) + 
+  geom_point() + 
+  labs(title = 'standardized')
+
+result_nd = kmeans(normalized_dat, k_val)
+p4 = normalized_dat %>%
+  mutate(cluster = result_nd$cluster) %>%
+  ggplot(aes(x = Sepal.Length, y = Petal.Length, col = as.factor(cluster))) + 
+  geom_point() + 
+  labs(title = 'normalized')
+
+grid.arrange(p1, p2, p3, p4)
+```
+
+
