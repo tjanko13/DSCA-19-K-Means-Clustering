@@ -7,12 +7,15 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 library('tidyverse')
 library('caret')
-
+library('gridExtra')
+#install.packages('gridExtra')
 raw_dat = ISLR::Auto %>%
   as_tibble() 
 
 dat = raw_dat %>%
   select(acceleration, weight)
+
+set.seed(123)
 ```
 
 ```{r}
@@ -28,8 +31,295 @@ Complete the following steps:
   - Decide on an appropriate value of K ... via trial and error
   - Visualize your results in a plot
 ```{r}
-
+summary(dat)
 ```
 
+```{r}
+dat %>%
+  summarize(
+    mean_weight = mean(weight),
+    sd_weight = sd(weight),
+    mean_acceleration = mean(acceleration),
+    sd_acceleration = sd(acceleration))
+```
+
+```{r}
+viz <- dat %>%
+  ggplot(aes(x = weight, y = acceleration)) + 
+  geom_point()
+viz
+```
+
+```{r}
+d1 <- dat %>%
+  ggplot(aes(x = weight)) + 
+  geom_density()
+
+d2 <- dat %>%
+  ggplot(aes(x = acceleration)) + 
+  geom_density()
+
+grid.arrange(d1, d2)
+```
+
+```{r}
+result <- kmeans(dat, 5)
+result
+```
+
+```{r}
+result = kmeans(dat, 5)
+viz2 <- dat %>%
+  mutate(cluster = result$cluster) %>%
+  ggplot(aes(x = weight, y = acceleration, col = as.factor(cluster))) + 
+  geom_point()
+gridExtra::grid.arrange(viz, viz2)
+```
+
+# ---- SCALING TRANSFORMATION---- ####  
+## ---- Divides each value by the standard deviation of the column  
+
+```{r}
+scaled_func <- preProcess(dat, method = c("scale"))
+scaled_dat <- predict(scaled_func, dat)
+scaled_dat
+```
+
+```{r}
+summary(scaled_dat)
+```
+
+```{r}
+scaled_dat %>%
+  summarize(
+    mean_weight = mean(weight),
+    sd_weight = sd(weight),
+    mean_acceleration = mean(acceleration),
+    sd_acceleration = sd(acceleration))
+```
+
+```{r}
+sd_avg_weight <- mean(scaled_dat$weight)
+sd_avg_accel <- mean(scaled_dat$acceleration)
+sd_sd_weight <- sd(scaled_dat$weight)
+sd_sd_accel <- sd(scaled_dat$acceleration)
+
+sd1 <- scaled_dat %>%
+  ggplot(aes(x = weight)) +
+  geom_vline (xintercept = sd_avg_weight, color = 'red', linetype = 3, size = 1.2) +
+  geom_vline (xintercept = sd_sd_weight, color = 'blue', linetype = 3, size = 1.2) +
+  geom_density(fill="tan", alpha = .4)
+
+sd2 <- scaled_dat %>%
+  ggplot(aes(x = acceleration)) +
+  geom_vline (xintercept = sd_avg_accel, color = 'red', linetype = 3, size = 1.2) +
+  geom_vline (xintercept = sd_sd_accel, color = 'blue', linetype = 3, size = 1.2) +
+  geom_density(fill="tan", alpha = .4)
+
+gridExtra::grid.arrange(sd1, sd2)
+```
+
+```{r}
+result = kmeans(scaled_dat, 5)
+viz3 <- scaled_dat %>%
+  mutate(cluster = result$cluster) %>%
+  ggplot(aes(x = weight, y = acceleration, col = as.factor(cluster))) + 
+  geom_point()
+gridExtra::grid.arrange(viz, viz3)
+```
+
+
+# ---- CENTER TRANSFORMATION---- ####  
+## ---- Subtracts the mean of each column from the values  
+
+```{r}
+centered_func = caret::preProcess(dat, method = c("center"))
+centered_dat = predict(centered_func, dat)
+centered_dat
+```
+
+```{r}
+summary(centered_dat)
+```
+
+```{r}
+centered_dat %>%
+  summarize(
+    mean_weight = mean(weight),
+    sd_weight = sd(weight),
+    mean_acceleration = mean(acceleration),
+    sd_acceleration = sd(acceleration))
+```
+
+```{r}
+cd_avg_weight <- mean(centered_dat$weight)
+cd_avg_accel <- mean(centered_dat$acceleration)
+cd_sd_weight <- sd(centered_dat$weight)
+cd_sd_accel <- sd(centered_dat$acceleration)
+
+cd1 <- centered_dat %>%
+  ggplot(aes(x = weight)) +
+  geom_vline (xintercept = cd_avg_weight, color = 'red', linetype = 3, size = 1.2) +
+  geom_vline (xintercept = cd_sd_weight, color = 'blue', linetype = 3, size = 1.2) +
+  geom_density(fill="tan", alpha = .4)
+
+cd2 <- centered_dat %>%
+  ggplot(aes(x = acceleration)) +
+  geom_vline (xintercept = cd_avg_accel, color = 'red', linetype = 3, size = 1.2) +
+  geom_vline (xintercept = cd_sd_accel, color = 'blue', linetype = 3, size = 1.2) +
+  geom_density(fill="tan", alpha = .4)
+
+gridExtra::grid.arrange(cd1, cd2)
+```
+
+```{r}
+result = kmeans(centered_dat, 5)
+viz4 <- centered_dat %>%
+  mutate(cluster = result$cluster) %>%
+  ggplot(aes(x = weight, y = acceleration, col = as.factor(cluster))) + 
+  geom_point()
+gridExtra::grid.arrange(viz, viz4)
+```
+
+# ---- STANDARDIZED TRANSFORMATION---- ####  
+## ---- Devides each value by the column sd and subtrats the mean 
+
+```{r}
+standardized_func <- caret::preProcess(dat, method = c("center", "scale"))
+standardized_dat <- predict(standardized_func, dat)
+standardized_dat
+```
+
+```{r}
+summary(standardized_dat)
+```
+
+```{r}
+standardized_dat %>%
+  summarize(
+    mean_weight = mean(weight),
+    sd_weight = sd(weight),
+    mean_acceleration = mean(acceleration),
+    sd_acceleration = sd(acceleration))
+```
+
+```{r}
+std_avg_weight <- mean(standardized_dat$weight)
+std_avg_accel <- mean(standardized_dat$acceleration)
+std_sd_weight <- sd(standardized_dat$weight)
+std_sd_accel <- sd(standardized_dat$acceleration)
+
+std1 <- standardized_dat %>%
+  ggplot(aes(x = weight)) +
+  geom_vline (xintercept = std_avg_weight, color = 'red', linetype = 3, size = 1.2) +
+  geom_vline (xintercept = std_sd_weight, color = 'blue', linetype = 3, size = 1.2) +
+  geom_density(fill="tan", alpha = .4)
+
+std2 <- standardized_dat %>%
+  ggplot(aes(x = acceleration)) +
+  geom_vline (xintercept = std_avg_accel, color = 'red', linetype = 3, size = 1.2) +
+  geom_vline (xintercept = std_sd_accel, color = 'blue', linetype = 3, size = 1.2) +
+  geom_density(fill="tan", alpha = .4)
+
+gridExtra::grid.arrange(std1, std2)
+```
+
+```{r}
+result = kmeans(standardized_dat, 5)
+viz5 <- standardized_dat %>%
+  mutate(cluster = result$cluster) %>%
+  ggplot(aes(x = weight, y = acceleration, col = as.factor(cluster))) + 
+  geom_point()
+gridExtra::grid.arrange(viz, viz5)
+```
+
+# ---- NORMALIZED TRANSFORMATION ---- ####
+## ---- Crunch everything between 0 and 1.  
+
+
+```{r}
+normalized_func <- caret::preProcess(dat, method = c("range"))
+normalized_dat <- predict(normalized_func, dat)
+normalized_dat
+```
+
+```{r}
+summary(normalized_dat)
+```
+
+```{r}
+normalized_dat %>%
+  summarize(
+    mean_weight = mean(weight),
+    sd_weight = sd(weight),
+    mean_acceleration = mean(acceleration),
+    sd_acceleration = sd(acceleration))
+```
+
+```{r}
+nd_avg_weight <- mean(normalized_dat$weight)
+nd_avg_accel <- mean(normalized_dat$acceleration)
+nd_sd_weight <- sd(normalized_dat$weight)
+nd_sd_accel <- sd(normalized_dat$acceleration)
+
+nd1 <- normalized_dat %>%
+  ggplot(aes(x = weight)) +
+  geom_vline (xintercept = nd_avg_weight, color = 'red', linetype = 3, size = 1.2) +
+  geom_vline (xintercept = nd_sd_weight, color = 'blue', linetype = 3, size = 1.2) +
+  geom_density(fill="tan", alpha = .4)
+
+nd2 <- normalized_dat %>%
+  ggplot(aes(x = acceleration)) +
+  geom_vline (xintercept = nd_avg_accel, color = 'red', linetype = 3, size = 1.2) +
+  geom_vline (xintercept = nd_sd_accel, color = 'blue', linetype = 3, size = 1.2) +
+  geom_density(fill="tan", alpha = .4)
+
+gridExtra::grid.arrange(nd1, nd2)
+```
+
+```{r}
+result <- kmeans(normalized_dat, 5)
+viz6 <- normalized_dat %>%
+  mutate(cluster = result$cluster) %>%
+  ggplot(aes(x = weight, y = acceleration, col = as.factor(cluster))) + 
+  geom_point()
+gridExtra::grid.arrange(viz,viz6)
+```
+
+## Running many times for each transformation.  
+
+```{r}
+k_val = 5
+
+result_sd <- kmeans(scaled_dat, k_val)
+p1 <- scaled_dat %>%
+  mutate(cluster = result_sd$cluster) %>%
+  ggplot(aes(x = weight, y = acceleration, col = as.factor(cluster))) + 
+  geom_point() + 
+  labs(title = 'scaled')
+
+result_cd = kmeans(centered_dat, k_val)
+p2 <- centered_dat %>%
+  mutate(cluster = result_cd$cluster) %>%
+  ggplot(aes(x = weight, y = acceleration, col = as.factor(cluster))) + 
+  geom_point() + 
+  labs(title = 'centered')
+
+result_std = kmeans(standardized_dat, k_val)
+p3 <- standardized_dat %>%
+  mutate(cluster = result_std$cluster) %>%
+  ggplot(aes(x = weight, y = acceleration, col = as.factor(cluster))) + 
+  geom_point() + 
+  labs(title = 'standardized')
+
+result_nd = kmeans(normalized_dat, k_val)
+p4 <- normalized_dat %>%
+  mutate(cluster = result_nd$cluster) %>%
+  ggplot(aes(x = weight, y = acceleration, col = as.factor(cluster))) + 
+  geom_point() + 
+  labs(title = 'normalized')
+
+grid.arrange(p1, p2, p3, p4)
+```
 
 
